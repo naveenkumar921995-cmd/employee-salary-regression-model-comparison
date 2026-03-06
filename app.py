@@ -1,6 +1,6 @@
-# ---------------------------------------------------
+# ================================
 # IMPORT LIBRARIES
-# ---------------------------------------------------
+# ================================
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -9,346 +9,236 @@ import plotly.graph_objects as go
 
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
-from sklearn.svm import SVR
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import r2_score, mean_absolute_error
+from sklearn.metrics import r2_score
 
-# ---------------------------------------------------
+# ================================
 # PAGE CONFIG
-# ---------------------------------------------------
+# ================================
 st.set_page_config(
-    page_title="Employee Salary ML Dashboard",
-    page_icon="📊",
+    page_title="Employee Salary AI Dashboard",
+    page_icon="💼",
     layout="wide"
 )
-# -----------------------------
-# Custom Premium UI Theme
-# -----------------------------
+
+# ================================
+# PREMIUM UI STYLE
+# ================================
 st.markdown("""
 <style>
 
-/* App background */
-.stApp {
-    background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
-    color: white;
+.stApp{
+background: linear-gradient(135deg,#141E30,#243B55);
+color:white;
 }
 
-/* Sidebar */
-[data-testid="stSidebar"] {
-    background: rgba(255,255,255,0.08);
-    backdrop-filter: blur(10px);
-}
-
-/* Metric Cards */
-[data-testid="metric-container"] {
-    background: rgba(255,255,255,0.10);
-    border-radius: 15px;
-    padding: 15px;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.2);
-}
-
-/* Buttons */
-.stButton>button {
-    border-radius: 10px;
-    background: linear-gradient(45deg,#00c6ff,#0072ff);
-    color: white;
-    font-weight: bold;
-}
-
-/* Slider */
-.stSlider > div {
-    color: white;
-}
-
-/* Dataframe */
-.css-1d391kg {
-    background: rgba(255,255,255,0.05);
-}
-
-</style>
-""", unsafe_allow_html=True)
-# ---------------------------------------------------
-# GLASSMORPHISM UI
-# ---------------------------------------------------
-st.markdown("""
-<style>
-
-.stApp {
-background: linear-gradient(135deg,#1f1c2c,#928dab);
-}
-
-.metric-card {
-background: rgba(255,255,255,0.15);
-border-radius: 15px;
-padding: 20px;
+[data-testid="metric-container"]{
+background:rgba(255,255,255,0.1);
+border-radius:12px;
+padding:15px;
 backdrop-filter: blur(10px);
-box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}
+
+[data-testid="stSidebar"]{
+background: rgba(255,255,255,0.08);
+backdrop-filter: blur(10px);
 }
 
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------------------------------------------
-# TITLE
-# ---------------------------------------------------
-st.title("📊 Employee Salary Prediction & Model Comparison Dashboard")
-
-st.write(
-"""
-Compare multiple **Machine Learning Regression Models**
-and automatically detect the **best performing algorithm**.
-"""
-)
-
-# ---------------------------------------------------
+# ================================
 # LOAD DATA
-# ---------------------------------------------------
+# ================================
 @st.cache_data
 def load_data():
-    return pd.read_csv("emp_sal.csv")
+    df = pd.read_csv("emp_sal.csv")
+    return df
 
 df = load_data()
 
-# ---------------------------------------------------
-# DATA PREVIEW
-# ---------------------------------------------------
-st.subheader("Dataset Preview")
-st.dataframe(df)
+X = df.iloc[:, 0:1].values
+y = df.iloc[:, 1].values
 
-# ---------------------------------------------------
-# FEATURES
-# ---------------------------------------------------
-X = df.iloc[:,1:2].values
-y = df.iloc[:,2].values
-
-# ---------------------------------------------------
+# ================================
 # TRAIN MODELS
-# ---------------------------------------------------
-lin_reg = LinearRegression()
-lin_reg.fit(X,y)
+# ================================
+lin_model = LinearRegression()
+lin_model.fit(X, y)
 
-poly = PolynomialFeatures(degree=5)
+poly = PolynomialFeatures(degree=4)
 X_poly = poly.fit_transform(X)
 
-poly_reg = LinearRegression()
-poly_reg.fit(X_poly,y)
+poly_model = LinearRegression()
+poly_model.fit(X_poly, y)
 
-svr_reg = SVR(kernel="rbf")
-svr_reg.fit(X,y)
+rf_model = RandomForestRegressor(n_estimators=100)
+rf_model.fit(X, y)
 
-knn_reg = KNeighborsRegressor(n_neighbors=3,weights="distance")
-knn_reg.fit(X,y)
+# ================================
+# MODEL PERFORMANCE
+# ================================
+lin_pred = lin_model.predict(X)
+poly_pred = poly_model.predict(X_poly)
+rf_pred = rf_model.predict(X)
 
-dt_reg = DecisionTreeRegressor()
-dt_reg.fit(X,y)
+lin_r2 = r2_score(y, lin_pred)
+poly_r2 = r2_score(y, poly_pred)
+rf_r2 = r2_score(y, rf_pred)
 
-rf_reg = RandomForestRegressor(n_estimators=100,random_state=0)
-rf_reg.fit(X,y)
-
-models = {
-    "Linear Regression": lin_reg,
-    "Polynomial Regression": poly_reg,
-    "SVR": svr_reg,
-    "KNN": knn_reg,
-    "Decision Tree": dt_reg,
-    "Random Forest": rf_reg
-}
-
-# ---------------------------------------------------
-# MODEL EVALUATION
-# ---------------------------------------------------
-results = []
-
-for name,model in models.items():
-
-    if name=="Polynomial Regression":
-        preds = poly_reg.predict(poly.transform(X))
-    else:
-        preds = model.predict(X)
-
-    r2 = r2_score(y,preds)
-    mae = mean_absolute_error(y,preds)
-
-    results.append({
-        "Model":name,
-        "R2 Score":r2,
-        "MAE":mae
-    })
-
-results_df = pd.DataFrame(results)
-
-# ---------------------------------------------------
-# AUTO SELECT BEST MODEL
-# ---------------------------------------------------
-best_model_name = results_df.sort_values(
-    by="R2 Score",
-    ascending=False
-).iloc[0]["Model"]
-
-best_model = models[best_model_name]
-
-# ---------------------------------------------------
+# ================================
 # SIDEBAR CONTROLS
-# ---------------------------------------------------
-st.sidebar.header("⚙️ Controls")
+# ================================
+st.sidebar.title("⚙️ Controls")
 
-selected_model = st.sidebar.selectbox(
-    "Select Model",
-    list(models.keys()),
-    index=list(models.keys()).index(best_model_name)
-)
-
-level = st.sidebar.slider(
-    "Position Level",
-    1.0,
-    10.0,
+position_level = st.sidebar.slider(
+    "Employee Level",
+    float(df.iloc[:,0].min()),
+    float(df.iloc[:,0].max()),
     5.0
 )
 
-# ---------------------------------------------------
+model_choice = st.sidebar.selectbox(
+    "Select Model",
+    ["Linear Regression","Polynomial Regression","Random Forest","Auto Best Model"]
+)
+
+# ================================
+# AUTO MODEL SELECTION
+# ================================
+if model_choice == "Auto Best Model":
+    
+    scores = {
+        "Linear Regression": lin_r2,
+        "Polynomial Regression": poly_r2,
+        "Random Forest": rf_r2
+    }
+    
+    best_model = max(scores, key=scores.get)
+    
+    model_choice = best_model
+
+# ================================
 # PREDICTION
-# ---------------------------------------------------
-if selected_model=="Polynomial Regression":
-    prediction = poly_reg.predict(poly.transform([[level]]))[0]
+# ================================
+if model_choice == "Linear Regression":
+    prediction = lin_model.predict([[position_level]])
+
+elif model_choice == "Polynomial Regression":
+    prediction = poly_model.predict(poly.transform([[position_level]]))
+
 else:
-    prediction = models[selected_model].predict([[level]])[0]
+    prediction = rf_model.predict([[position_level]])
 
-# ---------------------------------------------------
-# KPI METRICS
-# ---------------------------------------------------
-col1,col2,col3 = st.columns(3)
+# ================================
+# DASHBOARD TITLE
+# ================================
+st.title("🧠 AI Employee Salary Prediction Dashboard")
 
-with col1:
-    st.metric("Best Model",best_model_name)
+# ================================
+# KPI METRIC CARDS
+# ================================
+col1,col2,col3,col4 = st.columns(4)
 
-with col2:
-    st.metric(
-        "Best R² Score",
-        round(results_df["R2 Score"].max(),3)
-    )
+col1.metric("Linear R²", round(lin_r2,3))
+col2.metric("Polynomial R²", round(poly_r2,3))
+col3.metric("RandomForest R²", round(rf_r2,3))
+col4.metric("Predicted Salary", f"${prediction[0]:,.0f}")
 
-with col3:
-    st.metric(
-        "Predicted Salary",
-        f"₹ {prediction:,.0f}"
-    )
+# ================================
+# MODEL RANKING TABLE
+# ================================
+st.subheader("🏆 Model Accuracy Leaderboard")
 
-# ---------------------------------------------------
-# MODEL LEADERBOARD
-# ---------------------------------------------------
-st.subheader("🏆 Model Leaderboard")
+leaderboard = pd.DataFrame({
+"Model":["Linear Regression","Polynomial Regression","Random Forest"],
+"R2 Score":[lin_r2,poly_r2,rf_r2]
+}).sort_values(by="R2 Score",ascending=False)
 
-results_df = results_df.sort_values(
-    by="R2 Score",
-    ascending=False
-)
+st.dataframe(leaderboard,use_container_width=True)
 
-results_df.index = results_df.index+1
-
-st.dataframe(results_df)
-
-# ---------------------------------------------------
-# MODEL PERFORMANCE CHART
-# ---------------------------------------------------
-fig = px.bar(
-    results_df,
-    x="Model",
-    y="R2 Score",
-    color="Model",
-    title="Model Accuracy Comparison"
-)
-
-st.plotly_chart(fig,use_container_width=True)
-
-# ---------------------------------------------------
-# PERFORMANCE HEATMAP
-# ---------------------------------------------------
+# ================================
+# MODEL PERFORMANCE HEATMAP
+# ================================
 st.subheader("🔥 Model Performance Heatmap")
 
-heatmap_data = results_df.set_index("Model")
-
 fig_heat = px.imshow(
-    heatmap_data,
+    leaderboard.set_index("Model"),
     text_auto=True,
     aspect="auto",
-    title="Model Performance Heatmap"
+    color_continuous_scale="viridis"
 )
 
 st.plotly_chart(fig_heat,use_container_width=True)
 
-# ---------------------------------------------------
-# REGRESSION CURVE
-# ---------------------------------------------------
-st.subheader("📈 Regression Curve")
+# ================================
+# 3D PLOTLY VISUALIZATION
+# ================================
+st.subheader("📊 3D Salary Prediction Visualization")
 
-X_grid = np.arange(start=X.min(),stop=X.max(),step=0.1)
-X_grid = X_grid.reshape(-1,1)
-
-if selected_model=="Polynomial Regression":
-    y_pred = poly_reg.predict(poly.transform(X_grid))
-else:
-    y_pred = models[selected_model].predict(X_grid)
-
-plot_df = pd.DataFrame({
-    "Position Level":X_grid.flatten(),
-    "Predicted Salary":y_pred
-})
-
-fig2 = px.line(
-    plot_df,
-    x="Position Level",
-    y="Predicted Salary",
-    title=f"{selected_model} Regression Curve"
-)
-
-fig2.add_scatter(
-    x=X.flatten(),
+fig3d = px.scatter_3d(
+    x=df.iloc[:,0],
     y=y,
-    mode="markers",
-    name="Actual Data"
+    z=lin_pred,
+    labels={'x':'Position Level','y':'Actual Salary','z':'Predicted Salary'},
 )
 
-st.plotly_chart(fig2,use_container_width=True)
+st.plotly_chart(fig3d,use_container_width=True)
 
-# ---------------------------------------------------
-# ANIMATED VISUALIZATION
-# ---------------------------------------------------
-st.subheader("🎬 Salary Growth Animation")
+# ================================
+# PREDICTION TREND ANIMATION
+# ================================
+st.subheader("📈 Prediction Trend Animation")
 
-anim_df = pd.DataFrame({
-    "Position Level":X.flatten(),
-    "Salary":y
+trend_df = pd.DataFrame({
+"Position":X.flatten(),
+"Actual Salary":y,
+"Predicted Salary":poly_pred
 })
 
-fig_anim = px.scatter(
-    anim_df,
-    x="Position Level",
-    y="Salary",
-    size="Salary",
-    animation_frame="Position Level"
+fig_trend = px.line(
+    trend_df,
+    x="Position",
+    y=["Actual Salary","Predicted Salary"],
+    markers=True
 )
 
-st.plotly_chart(fig_anim,use_container_width=True)
+st.plotly_chart(fig_trend,use_container_width=True)
 
-# ---------------------------------------------------
+# ================================
+# FEATURE IMPORTANCE
+# ================================
+st.subheader("🎯 Feature Importance")
+
+importance = pd.DataFrame({
+"Feature":["Position Level"],
+"Importance":[rf_model.feature_importances_[0]]
+})
+
+fig_imp = px.bar(
+importance,
+x="Feature",
+y="Importance"
+)
+
+st.plotly_chart(fig_imp,use_container_width=True)
+
+# ================================
 # DOWNLOAD REPORT
-# ---------------------------------------------------
-st.subheader("📥 Download Model Report")
+# ================================
+st.subheader("📥 Download Prediction Report")
 
-csv = results_df.to_csv(index=False)
+report = pd.DataFrame({
+"Selected Position":[position_level],
+"Model Used":[model_choice],
+"Predicted Salary":[prediction[0]]
+})
+
+csv = report.to_csv(index=False).encode('utf-8')
 
 st.download_button(
-    "Download CSV",
-    csv,
-    "model_performance_report.csv",
-    "text/csv"
+label="Download Report",
+data=csv,
+file_name="salary_prediction_report.csv",
+mime="text/csv"
 )
-
-# ---------------------------------------------------
-# FOOTER
-# ---------------------------------------------------
-st.markdown("---")
-st.markdown("Built with ❤️ using Python • Streamlit • Scikit-learn • Plotly")
