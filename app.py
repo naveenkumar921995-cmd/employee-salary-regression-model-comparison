@@ -15,7 +15,7 @@ from sklearn.metrics import r2_score, mean_absolute_error
 # PAGE CONFIG
 # ---------------------------------------------------
 st.set_page_config(
-    page_title="Employee Salary Regression Model Comparison",
+    page_title="Employee Salary ML Dashboard",
     page_icon="📊",
     layout="wide"
 )
@@ -23,11 +23,16 @@ st.set_page_config(
 # ---------------------------------------------------
 # TITLE
 # ---------------------------------------------------
-st.title("📊 Employee Salary Prediction & Model Comparison Dashboard")
-st.write(
+st.title("📊 Employee Salary Prediction & Model Comparison")
+st.markdown(
 """
-This interactive machine learning dashboard compares multiple regression models
+This interactive **Machine Learning Dashboard** compares multiple regression models
 to predict **employee salary based on years of experience**.
+
+Models Used:
+- Linear Regression
+- Ridge Regression
+- Lasso Regression
 """
 )
 
@@ -36,19 +41,32 @@ to predict **employee salary based on years of experience**.
 # ---------------------------------------------------
 @st.cache_data
 def load_data():
-    df = pd.read_csv("Salary_Data.csv")
+    try:
+        df = pd.read_csv("Salary_Data.csv")
+    except:
+        st.error("Dataset file 'Salary_Data.csv' not found. Please upload it to the GitHub repository.")
+        st.stop()
+
     return df
 
 df = load_data()
 
 # ---------------------------------------------------
-# DATA OVERVIEW
+# DATA PREVIEW
 # ---------------------------------------------------
-st.subheader("Dataset Preview")
-st.dataframe(df)
+st.subheader("📂 Dataset Preview")
+
+col1, col2 = st.columns([2,1])
+
+with col1:
+    st.dataframe(df, use_container_width=True)
+
+with col2:
+    st.metric("Total Records", df.shape[0])
+    st.metric("Features", df.shape[1])
 
 # ---------------------------------------------------
-# FEATURE / TARGET
+# FEATURES
 # ---------------------------------------------------
 X = df[['YearsExperience']]
 y = df['Salary']
@@ -57,11 +75,13 @@ y = df['Salary']
 # TRAIN TEST SPLIT
 # ---------------------------------------------------
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
+    X, y,
+    test_size=0.2,
+    random_state=42
 )
 
 # ---------------------------------------------------
-# SCALING
+# FEATURE SCALING
 # ---------------------------------------------------
 scaler = StandardScaler()
 
@@ -103,53 +123,59 @@ for name, model in models.items():
 results_df = pd.DataFrame(results)
 
 # ---------------------------------------------------
-# MODEL PERFORMANCE DASHBOARD
+# MODEL PERFORMANCE
 # ---------------------------------------------------
-st.subheader("📈 Model Performance Comparison")
+st.subheader("📈 Model Performance Dashboard")
 
 col1, col2 = st.columns(2)
 
 with col1:
+
     fig_r2 = px.bar(
         results_df,
         x="Model",
         y="R² Score",
-        title="Model R² Score Comparison",
+        color="Model",
         text="R² Score",
-        color="Model"
+        title="Model Accuracy (R² Score)"
     )
+
+    fig_r2.update_layout(showlegend=False)
 
     st.plotly_chart(fig_r2, use_container_width=True)
 
 with col2:
+
     fig_mae = px.bar(
         results_df,
         x="Model",
         y="MAE",
-        title="Model MAE Comparison",
+        color="Model",
         text="MAE",
-        color="Model"
+        title="Model Error (MAE)"
     )
+
+    fig_mae.update_layout(showlegend=False)
 
     st.plotly_chart(fig_mae, use_container_width=True)
 
 # ---------------------------------------------------
 # MODEL RANKING
 # ---------------------------------------------------
-st.subheader("🏆 Model Ranking")
+st.subheader("🏆 Model Leaderboard")
 
 ranking = results_df.sort_values(by="R² Score", ascending=False)
 ranking.index = ranking.index + 1
 
-st.dataframe(ranking)
+st.dataframe(ranking, use_container_width=True)
 
 # ---------------------------------------------------
 # PREDICTION VS ACTUAL
 # ---------------------------------------------------
-st.subheader("📊 Prediction vs Actual Visualization")
+st.subheader("📊 Prediction vs Actual")
 
 selected_model = st.selectbox(
-    "Select Model",
+    "Select Model for Visualization",
     list(predictions_dict.keys())
 )
 
@@ -164,8 +190,8 @@ fig_compare = px.scatter(
     comparison_df,
     x="Actual Salary",
     y="Predicted Salary",
-    title=f"{selected_model} Prediction vs Actual",
-    trendline="ols"
+    trendline="ols",
+    title=f"{selected_model} Predictions"
 )
 
 st.plotly_chart(fig_compare, use_container_width=True)
@@ -173,15 +199,16 @@ st.plotly_chart(fig_compare, use_container_width=True)
 # ---------------------------------------------------
 # SALARY PREDICTION TOOL
 # ---------------------------------------------------
-st.subheader("💰 Predict Salary")
+st.subheader("💰 Salary Prediction Tool")
 
 years = st.slider(
-    "Years of Experience",
+    "Select Years of Experience",
     0.0,
     20.0,
     5.0
 )
 
+# Best Model
 best_model_name = ranking.iloc[0]["Model"]
 best_model = models[best_model_name]
 
@@ -192,7 +219,7 @@ input_scaled = scaler.transform([[years]])
 prediction = best_model.predict(input_scaled)
 
 st.success(
-    f"Estimated Salary using **{best_model_name}**: ₹ {prediction[0]:,.2f}"
+    f"Predicted Salary using **{best_model_name}** : ₹ {prediction[0]:,.2f}"
 )
 
 # ---------------------------------------------------
@@ -216,4 +243,10 @@ st.download_button(
 # FOOTER
 # ---------------------------------------------------
 st.markdown("---")
-st.markdown("Built with ❤️ using Streamlit, Scikit-learn & Plotly")
+st.markdown(
+"""
+✅ Built with **Python, Streamlit, Scikit-learn & Plotly**
+
+Author: **Naveen Kumar**
+"""
+)
